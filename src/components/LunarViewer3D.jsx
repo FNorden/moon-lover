@@ -550,6 +550,38 @@ export default function LunarViewer3D({
     );
   }, [missionDate, scrubbedHours]);
 
+  // Evaluación de viabilidad física rigurosa y calibrada
+  const evaluateTouchdown = useCallback((site = selectedSite) => {
+    if (!site) return;
+    const arrivalDate = new Date(missionDate.includes('Z') ? missionDate : missionDate + ':00Z');
+    const { elevacionGrados } = calcularPosicionSolar(arrivalDate, site);
+    const currentSunElev = Number(elevacionGrados.toFixed(2));
+    const currentSlope = site?.slopeDeg || 8.5;
+
+    if (currentSlope > CRITICAL_THRESHOLDS.MAX_SLOPE_DEG) {
+      setFlightOutcome({
+        success: false,
+        title: 'ALUNIZAJE FALLIDO // TOPOGRAFÍA',
+        reason: `Pendiente local de ${currentSlope}° supera el límite de seguridad (${CRITICAL_THRESHOLDS.MAX_SLOPE_DEG}°). Riesgo inminente de vuelco de la etapa de descenso.`,
+        suggestion: `Incrementa la tolerancia de pendiente en 'Filtros de Seguridad' o selecciona un cráter con relieve más llano como Shackleton Connecting Ridge (6.5°) o Malapert Mountain (7.2°).`
+      });
+    } else if (currentSunElev < CRITICAL_THRESHOLDS.MIN_SUN_ELEV_DEG) {
+      setFlightOutcome({
+        success: false,
+        title: 'MISIÓN ABORTADA // ENERGÍA SOLAR',
+        reason: `Elevación solar de ${currentSunElev}° insuficiente (< ${CRITICAL_THRESHOLDS.MIN_SUN_ELEV_DEG}°). Los paneles fotovoltaicos no logran suministrar energía al sistema.`,
+        suggestion: `Ajusta la fecha en 'Touchdown UTC' (prueba desplazando entre 12h y 36h) para sincronizar con la ventana de máxima insolación lunar, o reduce la elevación solar mínima requerida.`
+      });
+    } else {
+      setFlightOutcome({
+        success: true,
+        title: `¡ALUNIZAJE EXITOSO EN ${site?.nombre.toUpperCase()}!`,
+        reason: `Contacto nominal confirmado. Pendiente segura (${currentSlope}° ≤ ${CRITICAL_THRESHOLDS.MAX_SLOPE_DEG}°), iluminación adecuada (${currentSunElev}°) y enlace DTE nominal.`,
+        suggestion: `Parámetros óptimos verificados. Puedes formalizar la misión descargando el Dictamen formal en PDF o exportando el plan de vuelo en JSON.`
+      });
+    }
+  }, [missionDate, selectedSite]);
+
   /* ============================================================================
    * [SECCIÓN 6: ANIMACIÓN CINEMÁTICA DE VUELO TLI Y ATERRIZAJE]
    * ============================================================================ */
@@ -561,11 +593,23 @@ export default function LunarViewer3D({
     switchPerspective('tli_corridor');
   }, [selectedSite, isFlying, switchPerspective]);
 
+  const skipToTouchdown = useCallback(() => {
+    if (!isFlying) return;
+    setIsFlying(false);
+    setFlightTelemetry(null);
+    if (trajectoryCurveRef.current && spaceshipMeshRef.current) {
+      const finalPos = trajectoryCurveRef.current.getPoint(1);
+      spaceshipMeshRef.current.position.copy(finalPos);
+    }
+    focusOnSite(selectedSite);
+    evaluateTouchdown(selectedSite);
+  }, [isFlying, focusOnSite, selectedSite, evaluateTouchdown]);
+
   useEffect(() => {
     if (!isFlying || !trajectoryCurveRef.current || !spaceshipMeshRef.current) return;
 
     let animId;
-    const duration = 5000; // 5 segundos para vuelo cinemático suave
+    const duration = 4000; // 4 segundos para vuelo cinemático suave
     const start = performance.now();
 
     const flightStep = (now) => {
@@ -627,39 +671,13 @@ export default function LunarViewer3D({
         focusOnSite(selectedSite);
 
         // Evaluación de viabilidad física rigurosa y calibrada
-        const arrivalDate = new Date(missionDate.includes('Z') ? missionDate : missionDate + ':00Z');
-        const { elevacionGrados } = calcularPosicionSolar(arrivalDate, selectedSite);
-        const currentSunElev = Number(elevacionGrados.toFixed(2));
-        const currentSlope = selectedSite?.slopeDeg || 8.5;
-
-        if (currentSlope > CRITICAL_THRESHOLDS.MAX_SLOPE_DEG) {
-          setFlightOutcome({
-            success: false,
-            title: 'ALUNIZAJE FALLIDO // TOPOGRAFÍA',
-            reason: `Pendiente local de ${currentSlope}° supera el límite de seguridad (${CRITICAL_THRESHOLDS.MAX_SLOPE_DEG}°). Riesgo inminente de vuelco de la etapa de descenso.`,
-            suggestion: `Incrementa la tolerancia de pendiente en 'Filtros de Seguridad' o selecciona un cráter con relieve más llano como Shackleton Connecting Ridge (6.5°) o Malapert Mountain (7.2°).`
-          });
-        } else if (currentSunElev < CRITICAL_THRESHOLDS.MIN_SUN_ELEV_DEG) {
-          setFlightOutcome({
-            success: false,
-            title: 'MISIÓN ABORTADA // ENERGÍA SOLAR',
-            reason: `Elevación solar de ${currentSunElev}° insuficiente (< ${CRITICAL_THRESHOLDS.MIN_SUN_ELEV_DEG}°). Los paneles fotovoltaicos no logran suministrar energía al sistema.`,
-            suggestion: `Ajusta la fecha en 'Touchdown UTC' (prueba desplazando entre 12h y 36h) para sincronizar con la ventana de máxima insolación lunar, o reduce la elevación solar mínima requerida.`
-          });
-        } else {
-          setFlightOutcome({
-            success: true,
-            title: `¡ALUNIZAJE EXITOSO EN ${selectedSite?.nombre.toUpperCase()}!`,
-            reason: `Contacto nominal confirmado. Pendiente segura (${currentSlope}° ≤ ${CRITICAL_THRESHOLDS.MAX_SLOPE_DEG}°), iluminación adecuada (${currentSunElev}°) y enlace DTE nominal.`,
-            suggestion: `Parámetros óptimos verificados. Puedes formalizar la misión descargando el Dictamen formal en PDF o exportando el plan de vuelo en JSON.`
-          });
-        }
+        evaluateTouchdown(selectedSite);
       }
     };
 
     animId = requestAnimationFrame(flightStep);
     return () => cancelAnimationFrame(animId);
-  }, [isFlying, selectedSite, missionDate, focusOnSite]);
+  }, [isFlying, selectedSite, missionDate, focusOnSite, evaluateTouchdown]);
 
   // Disparador de simulación de vuelo desde el panel exterior
   const lastFlightTriggerRef = useRef(0);
@@ -710,7 +728,16 @@ export default function LunarViewer3D({
               <Activity className="w-4 h-4 animate-spin text-cyan-400" />
               {flightTelemetry.phase}
             </span>
-            <span className="text-xs text-slate-300 font-bold">{flightTelemetry.progress}%</span>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-slate-300 font-bold">{flightTelemetry.progress}%</span>
+              <button
+                onClick={skipToTouchdown}
+                className="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-cyan-300 text-[10px] font-bold border border-slate-700 cursor-pointer transition-all"
+                title="Avanzar directamente al contacto en superficie"
+              >
+                Omitir
+              </button>
+            </div>
           </div>
 
           <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden mb-3">
@@ -733,63 +760,63 @@ export default function LunarViewer3D({
         </div>
       )}
 
-      {/* 7.3 Modal lateral táctico de resultado de la misión (estilizado y vertical a un costado) */}
+      {/* 7.3 Modal central de resultado de la misión (Restaurado a su posición prominente original) */}
       {flightOutcome && (
-        <div className="absolute top-3.5 left-3.5 z-40 w-64 sm:w-72 max-h-[88%] overflow-y-auto retro-frame p-3.5 shadow-2xl font-mono backdrop-blur-xl animate-in fade-in slide-in-from-left duration-200">
-          <div className="flex items-start justify-between gap-2 pb-2 border-b border-slate-800">
-            <div className="flex items-center gap-2">
-              {flightOutcome.success ? (
-                <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0" />
-              ) : (
-                <XCircle className="w-4 h-4 text-rose-500 flex-shrink-0" />
-              )}
-              <h3 className={`font-bold text-[11px] uppercase tracking-wider leading-tight ${flightOutcome.success ? 'text-emerald-400' : 'text-rose-400'}`}>
-                {flightOutcome.title}
-              </h3>
-            </div>
-            <button
-              onClick={() => setFlightOutcome(null)}
-              className="text-slate-400 hover:text-white p-0.5 rounded hover:bg-slate-800 cursor-pointer"
-              title="Cerrar letrero"
-            >
-              <X className="w-3.5 h-3.5" />
-            </button>
-          </div>
-
-          <div className="py-2.5 space-y-2">
-            <p className="text-[10px] text-slate-300 leading-relaxed">
-              {flightOutcome.reason}
-            </p>
-
-            {/* Sugerencia Táctica de Vuelo para Próxima Simulación */}
-            {flightOutcome.suggestion && (
-              <div className="p-2 rounded-lg bg-slate-900/90 border border-cyan-500/30 text-[10px] space-y-1">
-                <div className="flex items-center gap-1.5 text-cyan-400 font-bold">
-                  <Lightbulb className="w-3 h-3 text-amber-400 flex-shrink-0" />
-                  <span>Sugerencia Táctica:</span>
-                </div>
-                <p className="text-slate-300 leading-snug">
-                  {flightOutcome.suggestion}
-                </p>
+        <div className={`absolute top-10 sm:top-14 left-1/2 -translate-x-1/2 z-50 w-11/12 max-w-md bg-[#0a0f18]/95 border-2 ${flightOutcome.success ? 'border-emerald-500/60 shadow-emerald-500/10' : 'border-rose-500/60 shadow-rose-500/10'} rounded-2xl p-5 font-mono shadow-2xl backdrop-blur-xl animate-in fade-in zoom-in-95 duration-200`}>
+          <div className="flex items-start gap-3.5">
+            {flightOutcome.success ? (
+              <CheckCircle2 className="w-8 h-8 text-emerald-400 flex-shrink-0" />
+            ) : (
+              <XCircle className="w-8 h-8 text-rose-500 flex-shrink-0" />
+            )}
+            <div className="flex-1">
+              <div className="flex items-start justify-between gap-2">
+                <h3 className={`font-bold text-sm mb-1 uppercase tracking-wide ${flightOutcome.success ? 'text-emerald-400' : 'text-rose-400'}`}>
+                  {flightOutcome.title}
+                </h3>
+                <button
+                  onClick={() => setFlightOutcome(null)}
+                  className="text-slate-400 hover:text-white p-1 rounded hover:bg-slate-800 cursor-pointer"
+                  title="Cerrar aviso"
+                >
+                  <X className="w-4 h-4" />
+                </button>
               </div>
-            )}
-          </div>
 
-          <div className="pt-2 border-t border-slate-800/80 flex flex-col gap-1.5">
-            {onOpenOptimizer && !flightOutcome.success && (
-              <button
-                onClick={onOpenOptimizer}
-                className="w-full py-1.5 px-2 rounded-lg bg-gradient-to-r from-amber-500 via-cyan-500 to-blue-500 text-slate-950 font-black text-[10px] uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer shadow-md hover:opacity-90 transition-all"
-              >
-                <Sparkles className="w-3 h-3" /> Calibrar con IA
-              </button>
-            )}
-            <button
-              onClick={() => setFlightOutcome(null)}
-              className="w-full py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px] font-bold transition-all cursor-pointer"
-            >
-              Cerrar Telemetría
-            </button>
+              <p className="text-xs text-slate-300 leading-relaxed mb-3">
+                {flightOutcome.reason}
+              </p>
+
+              {/* Sugerencia Táctica de Vuelo para Próxima Simulación */}
+              {flightOutcome.suggestion && (
+                <div className="p-2.5 rounded-xl bg-slate-900/90 border border-cyan-500/30 text-[11px] space-y-1 mb-3">
+                  <div className="flex items-center gap-1.5 text-cyan-400 font-bold">
+                    <Lightbulb className="w-3.5 h-3.5 text-amber-400 flex-shrink-0" />
+                    <span>Sugerencia Táctica:</span>
+                  </div>
+                  <p className="text-slate-300 leading-relaxed">
+                    {flightOutcome.suggestion}
+                  </p>
+                </div>
+              )}
+
+              <div className="flex flex-col sm:flex-row gap-2 pt-2 border-t border-slate-800/80">
+                {onOpenOptimizer && !flightOutcome.success && (
+                  <button
+                    onClick={onOpenOptimizer}
+                    className="flex-1 py-2 px-3 rounded-xl bg-gradient-to-r from-amber-500 via-cyan-500 to-blue-500 text-slate-950 font-black text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer shadow-md hover:opacity-90 transition-all text-center"
+                  >
+                    <Sparkles className="w-3.5 h-3.5" /> Calibrar con IA
+                  </button>
+                )}
+                <button
+                  onClick={() => setFlightOutcome(null)}
+                  className="flex-1 py-2 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold transition-all cursor-pointer text-center"
+                >
+                  Cerrar Telemetría
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
