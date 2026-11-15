@@ -1,0 +1,95 @@
+/* =========================================================================
+ * MOON LOVER GLOBAL STYLES // 70's RETROLINES & SPACE-AGE DESIGN SYSTEM
+ * ========================================================================= */
+@import "tailwindcss";
+
+/* Ajuste espacial responsivo con soporte para scroll táctil */
+html, body {
+  min-height: 100%;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+  background-color: #030611; /* Negro azulado profundo Space-Age */
+  color: #f1f5f9;
+  font-family: 'Share Tech Mono', 'Space Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  user-select: none;
+}
+
+#root {
+  min-height: 100%;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* =========================================================================
+ * RETROLINES 70's: ENMARCADO EN DEGRADÉ DE 5 LÍNEAS (AZUL A PLATA)
+ * 1. Azul Marino (#1e3a8a)
+ * 2. Azul Espacial (#0284c7)
+ * 3. Celeste Retro (#38bdf8)
+ * 4. Plata Titanio (#94a3b8)
+ * 5. Plata Lunar Brillante (#f8fafc)
+ * ========================================================================= */
+
+/* Enmarcado concéntrico de 5 líneas para ventanas y paneles */
+.retro-frame {
+  position: relative;
+  border-radius: 1rem;
+  background-color: rgba(3, 6, 17, 0.94);
+  box-shadow: 
+    0 0 0 1px #1e3a8a,
+    0 0 0 2px #0284c7,
+    0 0 0 3px #38bdf8,
+    0 0 0 4px #94a3b8,
+    0 0 0 5px #f8fafc,
+    0 10px 30px rgba(0, 0, 0, 0.8);
+}
+
+/* Enmarcado fino de 5 líneas para tarjetas secundarias */
+.retro-card {
+  position: relative;
+  border-radius: 0.85rem;
+  background-color: rgba(4, 8, 22, 0.92);
+  box-shadow: 
+    0 0 0 1px #1e3a8a,
+    0 0 0 2px #0284c7,
+    0 0 0 3px #38bdf8,
+    0 0 0 4px #94a3b8,
+    0 0 0 5px #e2e8f0;
+}
+
+/* Cinta decorativa horizontal de 5 líneas (Azul a Plata) */
+.retro-ribbon-5 {
+  height: 5px;
+  width: 100%;
+  background: linear-gradient(
+    to bottom,
+    #f8fafc 0%, #f8fafc 20%,
+    #94a3b8 20%, #94a3b8 40%,
+    #38bdf8 40%, #38bdf8 60%,
+    #0284c7 60%, #0284c7 80%,
+    #1e3a8a 80%, #1e3a8a 100%
+  );
+}
+
+/* Cinta decorativa vertical de 5 líneas (Azul a Plata) */
+.retro-ribbon-v5 {
+  width: 5px;
+  background: linear-gradient(
+    to right,
+    #1e3a8a 0%, #1e3a8a 20%,
+    #0284c7 20%, #0284c7 40%,
+    #38bdf8 40%, #38bdf8 60%,
+    #94a3b8 60%, #94a3b8 80%,
+    #f8fafc 80%, #f8fafc 100%
+  );
+}
+
+/* Tipografía de líneas rectas, sólidas y marcadas */
+.retro-title {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}

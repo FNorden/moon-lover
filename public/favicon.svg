@@ -1,0 +1,46 @@
+
+<svg xmlns="http://www.w3.org/2000/svg"
+     width="567"
+     height="567"
+     viewBox="0 0 567 567">
+
+  <defs>
+    <clipPath id="circle">
+      <circle cx="283.5" cy="283.5" r="283.5"/>
+    </clipPath>
+  </defs>
+
+  <!-- Disco circular -->
+  <circle cx="283.5" cy="283.5" r="283.5"
+          fill="#0d0d0d"/>
+
+  <g clip-path="url(#circle)" fill="none"
+     stroke-linecap="round">
+
+    <!-- Línea 1: azul oscuro -->
+    <path d="M17 139 C41 240 60 362 124 449
+             C164 503 216 547 260 580"
+          stroke="#20499c" stroke-width="22"/>
+
+    <!-- Línea 2: azul -->
+    <path d="M39 119 C60 220 76 345 139 437
+             C180 493 235 541 287 580"
+          stroke="#009cdb" stroke-width="22"/>
+
+    <!-- Línea 3: celeste -->
+    <path d="M57 98 C77 202 92 331 155 423
+             C198 484 260 534 311 580"
+          stroke="#32bff0" stroke-width="22"/>
+
+    <!-- Línea 4: gris azulado -->
+    <path d="M77 76 C94 180 107 316 169 410
+             C211 475 276 527 336 580"
+          stroke="#aab6c6" stroke-width="22"/>
+
+    <!-- Línea 5: blanco -->
+    <path d="M91 58 C105 165 117 302 178 399
+             C220 466 286 519 352 580"
+          stroke="#ffffff" stroke-width="24"/>
+
+  </g>
+</svg>
